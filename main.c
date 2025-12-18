@@ -3,10 +3,14 @@
 #include "renderers/clay_renderer_raylib.c"
 
 // Colors and Font
-#define BG_COLOR (Clay_Color) {50, 50, 50, 255}
-#define HEADER_BG_COLOR (Clay_Color) {90, 90, 90, 255}
-#define HEADER_BUTTON_COLOR (Clay_Color) {120, 120, 120, 255}
-#define HEADER_BUTTON_COLOR_HOVER (Clay_Color) {110, 110, 110, 255}
+#define CLAY_BLACK (Clay_Color) {0, 0, 0, 255}
+#define BG_COLOR (Clay_Color) {50, 50, 42, 255}
+#define CONTENT_BOX_BG_COLOR (Clay_Color) {80, 80, 80, 255}
+#define HEADER_BG_COLOR (Clay_Color) {78, 78, 70, 255}
+#define HEADER_BUTTON_COLOR (Clay_Color) {155, 155, 145, 255}
+#define HEADER_BUTTON_COLOR_HOVER (Clay_Color) {120, 120, 110, 255}
+
+#define RAYLIB_VECTOR2_TO_CLAY_VECTOR2(vector) (Clay_Vector2) { .x = vector.x, .y = vector.y }
 
 const uint32_t FONT_ID_BODY_16 = 0;
 const char FONT_PATH[] = "resources/Orbitron Light.ttf";
@@ -40,14 +44,14 @@ Clay_Dimensions MeasureTextRaylib(
 }
 
 
-
 // Error Handler
 void HandleClayErrors(Clay_ErrorData errorData) {
         printf("%s", errorData.errorText.chars);
 }
 
+// Mouse Handling
 
-// UI Elements
+// UI
 
 void buildHeaderButton(Clay_ElementId id, Clay_String text) {
         CLAY( id, {
@@ -56,15 +60,24 @@ void buildHeaderButton(Clay_ElementId id, Clay_String text) {
                                 .width = CLAY_SIZING_FIT(0),
                                 .height = CLAY_SIZING_FIT(0)
                         },
-                        .padding = CLAY_PADDING_ALL(5)
+                        .padding = CLAY_PADDING_ALL(8)
+                },
+                .border = {
+                        .width = {
+                                .top = 1,
+                                .bottom = 1,
+                                .left = 1,
+                                .right = 1
+                        },
+                        .color = CLAY_BLACK
                 },
                 .cornerRadius = CLAY_CORNER_RADIUS(8),
-                .backgroundColor = HEADER_BUTTON_COLOR
+                .backgroundColor = Clay_Hovered() ? HEADER_BUTTON_COLOR_HOVER : HEADER_BUTTON_COLOR
         }) {
                 CLAY_TEXT( text, CLAY_TEXT_CONFIG({
                         .fontId = FONT_ID_BODY_16,
-                        .fontSize = 24,
-                        .textColor = (Clay_Color) {0, 0, 0, 255}
+                        .fontSize = 22,
+                        .textColor = CLAY_BLACK
                 }));
         }
 }
@@ -77,7 +90,8 @@ void buildUI() {
                                         .width = CLAY_SIZING_GROW(0),
                                         .height = CLAY_SIZING_GROW(0)
                                 },
-                                .childGap = 16
+                                .padding = CLAY_PADDING_ALL(8),
+                                .childGap = 4
                         },
                         .backgroundColor = BG_COLOR,
                 }) {
@@ -89,12 +103,17 @@ void buildUI() {
                                                 .height = CLAY_SIZING_FIT(0)
                                         },
                                         .padding = CLAY_PADDING_ALL(8),
-                                        .childGap = 12
+                                        .childGap = 6,
+                                        .childAlignment = CLAY_ALIGN_X_LEFT
                                 },
                                 .backgroundColor = HEADER_BG_COLOR,
+                                .cornerRadius = CLAY_CORNER_RADIUS(15),
                                 .border = {
                                         .width = {
-                                                .bottom = 2
+                                                .bottom = 2,
+                                                .top = 2,
+                                                .right = 2,
+                                                .left = 2
                                         },
                                         .color = (Clay_Color) {0, 0, 0, 255}
                                 } 
@@ -102,6 +121,39 @@ void buildUI() {
                                 buildHeaderButton(CLAY_ID("tabExplore"), CLAY_STRING("Explore"));
                                 buildHeaderButton(CLAY_ID("tabBattle"), CLAY_STRING("Battle"));
                                 buildHeaderButton(CLAY_ID("tabBuild"), CLAY_STRING("Build"));
+                        }
+
+                        CLAY( CLAY_ID("BottomContainer"), {
+                                .layout = {
+                                        .sizing = {
+                                                .width = CLAY_SIZING_GROW(0),
+                                                .height = CLAY_SIZING_GROW(0)
+                                        },
+                                        .padding = CLAY_PADDING_ALL(0)
+                                },
+                                .backgroundColor = (Clay_Color) {22, 30, 60, 0}
+                        }) {
+                                CLAY( CLAY_ID("Content"), {
+                                        .layout = {
+                                                .sizing = {
+                                                        .width = CLAY_SIZING_GROW(0),
+                                                        .height = CLAY_SIZING_GROW(0)
+                                                },
+                                                .padding = CLAY_PADDING_ALL(8),
+                                                .childGap = 8
+                                        },
+                                        .backgroundColor = HEADER_BG_COLOR,
+                                        .cornerRadius = CLAY_CORNER_RADIUS(15),
+                                        .border = {
+                                                .width = {
+                                                        .left = 2,
+                                                        .right = 2,
+                                                        .top = 2,
+                                                        .bottom = 2
+                                                },
+                                                .color = CLAY_BLACK
+                                        }
+                                }) {}
                         }
                 }
 }
@@ -113,7 +165,8 @@ void buildUI() {
 
 // Main Funct Call
 void main() {
-        Clay_Raylib_Initialize(600, 800, "Game_01", FLAG_WINDOW_TOPMOST);
+        Clay_Raylib_Initialize(600, 800, "Game_01", FLAG_WINDOW_TOPMOST | FLAG_WINDOW_RESIZABLE);
+        SetTargetFPS(30);
 
         fonts[FONT_ID_BODY_16] = LoadFont(FONT_PATH);
 
@@ -134,13 +187,20 @@ void main() {
         // While Game is Running
         while (!WindowShouldClose()) {
 
-                // Code here runs once per frame
+                Clay_SetLayoutDimensions((Clay_Dimensions) {.width = GetScreenWidth(), .height = GetScreenHeight()});
+
+                // Update Mouse Pointer
+                Clay_SetPointerState(
+                        RAYLIB_VECTOR2_TO_CLAY_VECTOR2(GetMousePosition()),
+                        IsMouseButtonDown(MOUSE_LEFT_BUTTON)
+                );
+
+                // UI Layout Declaration
                 Clay_BeginLayout();
-
-                // UI Code
                 buildUI();
-
                 Clay_RenderCommandArray renderCommands = Clay_EndLayout();
+
+                // Interaction Logic
 
                 // Render Call
                 BeginDrawing();
